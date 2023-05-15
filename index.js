@@ -43,7 +43,7 @@ app.get('/api/v1/spotify_song', async (req, res) => {
   const payload = {
     track_id, secret_key: SECRET_KEY
   }
-  const token = await jwt.sign(payload, SECRET_KEY, { expiresIn: '30m' });
+  const token = await jwt.sign(payload, SECRET_KEY, { expiresIn: '60m' });
 
   return res.status(200).json({ token, url: `${process.env.DOMAIN}/api/v1/spotify_song/download?track_id=${track_id}` })
 })
