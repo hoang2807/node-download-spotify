@@ -2,11 +2,10 @@ require('dotenv').config()
 const fs = require('fs')
 const express = require('express')
 const fetch = require('node-fetch')
-const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
 const app = express()
 const PORT = process.env.PORT
 const HOST = process.env.HOST
-const SECRET_KEY = process.env.SECRET_KEY
 
 const { exec } = require('child_process')
 
@@ -16,39 +15,30 @@ app.get('/', (req, res) => {
   res.status(200).json({ message: 'Hello' })
 })
 
-async function checkToken(req, res, next) {
+function checkFileName(fileName, string) {
+  if (fileName.includes(string) && fileName.includes('.mp3'))
+    return true
+  else return false
+}
+
+async function getFileName(fileName, name) {
   try {
-    const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1]
+    const result = fs.readdirSync(fileName)
+    console.log(result)
+    for (let i = 0; i < result.length; ++i)
+      if (checkFileName(result[i], name)) {
+        const name = `${crypto.randomUUID()}.mp3`
+        console.log(name)
+        await fs.renameSync(`${__dirname}/${result[i]}`, `${__dirname}/${name}`)
+        return name
+      }
 
-    if (token == null) return res.sendStatus(401)
-
-    const decode = await jwt.verify(token, SECRET_KEY)
-
-    if (decode.secret_key != SECRET_KEY)
-      return res.sendStatus(401)
-    if (decode.exp * 1000 <= Date.now()) {
-      return res.sendStatus(403)
-    } else {
-      req.id = decode.track_id
-      return next()
-    }
   } catch (error) {
-    return res.status(400).json(error)
+    console.log(error)
   }
 }
 
-app.get('/api/v1/spotify_song', async (req, res) => {
-  const { track_id } = req.query
-  const payload = {
-    track_id, secret_key: SECRET_KEY
-  }
-  const token = await jwt.sign(payload, SECRET_KEY, { expiresIn: '60m' });
-
-  return res.status(200).json({ token, url: `${process.env.DOMAIN}/api/v1/spotify_song/download?track_id=${track_id}` })
-})
-
-app.get('/api/v1/spotify_song/download', checkToken, async (req, res) => {
+app.get('/api/v1/spotify_song/download', async (req, res) => {
   try {
     const { track_id } = req.query
 
@@ -60,19 +50,14 @@ app.get('/api/v1/spotify_song/download', checkToken, async (req, res) => {
       }
     })).json()
 
-    const url = data?.album?.external_urls?.spotify
-    const albumName = data?.album?.name
-    const artistsName = data?.artists[0]?.name
-    const fileName = `${artistsName} - ${albumName}.mp3`
-    const filePath = `${__dirname}/${fileName}`
+    console.log(data)
+    const url = data?.external_urls?.spotify
+    const fileName = data?.name
+    // const artistsName = data?.artists[0]?.name
+    // const fileName = `${artistsName} - ${albumName}.mp3`
+    // const filePath = `${__dirname}/${fileName}`
 
-    // const result = await exec(`spotdl ${url}`)
-    // if (result.stderr) {
-    //   console.log(`stderr: ${stderr}`)
-    //   return res.status(500).json({ message: stderr.message })
-    // }
-
-    exec(`spotdl ${url}`, (error, stdout, stderr) => {
+    exec(`spotdl ${url}`, async (error, stdout, stderr) => {
       if (error) {
         console.log(`error: ${error.message}`)
         return res.status(500).json({ message: error.message })
@@ -83,12 +68,17 @@ app.get('/api/v1/spotify_song/download', checkToken, async (req, res) => {
       }
       console.log(`stdout: ${stdout}`)
 
-      return res.status(200).download(filePath, fileName, (err) => {
+      const searchFileName = await getFileName(__dirname, fileName)
+      console.log('searchFileName: ', searchFileName)
+
+      console.log(`${__dirname}/${searchFileName}`)
+
+      return res.status(200).download(`${__dirname}/${searchFileName}`, searchFileName, (err) => {
         if (err) {
-          console.log(error)
+          console.log(err)
           return res.status(500).json({ message: err.message })
         }
-        fs.unlinkSync(filePath)
+        fs.unlinkSync(`${__dirname}/${searchFileName}`)
       })
       // const newFileName = fileName.split(' ').join('_')
       // const newPath = `${__dirname}/${newFileName}`
