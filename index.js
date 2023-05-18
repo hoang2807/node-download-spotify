@@ -12,12 +12,7 @@ const { exec } = require('child_process')
 
 app.use(express.json())
 
-app.get('/', async (req, res) => {
-  const musics = await searchMusics('Never gonna give you up')
-  console.log(musics)
-
-  res.status(200).json({ message: 'Hello' })
-})
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 function checkFileName(fileName, string) {
   if (fileName.includes(string) && fileName.includes('.mp3'))
@@ -64,6 +59,7 @@ app.get('/api/v1/spotify_song/download', async (req, res) => {
         return res.status(500).json({ message: stderr.message })
       }
       console.log(`stdout: ${stdout}`)
+      await delay(1000)
 
       const searchFileName = await getFileName(__dirname, fileName)
 
