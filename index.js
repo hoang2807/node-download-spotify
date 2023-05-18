@@ -4,14 +4,18 @@ const express = require('express')
 const fetch = require('node-fetch')
 const crypto = require('crypto')
 const app = express()
-const PORT = process.env.PORT
+const PORT = process.env.PORT || 3000
 const HOST = process.env.HOST
+// const searchMusics = require('node-youtube-music')
 
 const { exec } = require('child_process')
 
 app.use(express.json())
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  const musics = await searchMusics('Never gonna give you up')
+  console.log(musics)
+
   res.status(200).json({ message: 'Hello' })
 })
 
@@ -29,7 +33,7 @@ async function getFileName(fileName, name) {
       if (checkFileName(result[i], name)) {
         const name = `${crypto.randomUUID()}.mp3`
         console.log(name)
-        await fs.renameSync(`${__dirname}/${result[i]}`, `${__dirname}/${name}`)
+        fs.renameSync(`${__dirname}/${result[i]}`, `${__dirname}/${name}`)
         return name
       }
 
@@ -42,17 +46,10 @@ app.get('/api/v1/spotify_song/download', async (req, res) => {
   try {
     const { track_id } = req.query
 
-    const api_token = await (await fetch('https://music-download.merryblue.llc/api/v1/spotify/token')).text()
+    const data = await (await fetch(`https://music-download.merryblue.llc/api/v1/music/track?track_id=${track_id}`)).json()
 
-    const data = await (await fetch(`https://api.spotify.com/v1/tracks/${track_id}`, {
-      headers: {
-        'Authorization': `Bearer ${api_token}`
-      }
-    })).json()
-
-    console.log(data)
-    const url = data?.external_urls?.spotify
-    const fileName = data?.name
+    const url = data?.result?.album?.href
+    const fileName = data?.result?.album?.name
     // const artistsName = data?.artists[0]?.name
     // const fileName = `${artistsName} - ${albumName}.mp3`
     // const filePath = `${__dirname}/${fileName}`
@@ -69,9 +66,6 @@ app.get('/api/v1/spotify_song/download', async (req, res) => {
       console.log(`stdout: ${stdout}`)
 
       const searchFileName = await getFileName(__dirname, fileName)
-      console.log('searchFileName: ', searchFileName)
-
-      console.log(`${__dirname}/${searchFileName}`)
 
       return res.status(200).download(`${__dirname}/${searchFileName}`, searchFileName, (err) => {
         if (err) {
