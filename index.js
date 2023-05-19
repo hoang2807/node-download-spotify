@@ -57,7 +57,7 @@ app.get('/api/v1/spotify_song', async (req, res) => {
 
       const uuidName = await getFileName(__dirname, fileName)
 
-      return res.status(200).json({ url: `http://localhost:3000/api/v1/spotify_song/download?id=${uuidName}` })
+      return res.status(200).json({ url: `${process.env.DOMAIN}/api/v1/spotify_song/download?id=${uuidName}` })
     })
   } catch (error) {
     return res.status(500).json({ message: error })
