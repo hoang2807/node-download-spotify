@@ -25,8 +25,8 @@ async function getFileName(filePath, name) {
     for (let i = 0; i < result.length; ++i)
       if (checkFileName(result[i], name)) {
         const name = `${crypto.randomUUID()}.mp3`
-        console.log(name)
-        fs.renameSync(`${filePath}/${result[i]}`, `${filePath}/${name}`)
+        console.log("🚀 ~ file: index.js:28 ~ getFileName ~ name:", name)
+        // fs.renameSync(`${filePath}/${result[i]}`, `${filePath}/${name}`)
         return name
       }
   } catch (error) {
@@ -39,10 +39,12 @@ app.get('/api/v1/spotify_song', async (req, res) => {
     const { track_id } = req.query
     const data = await (await fetch(`https://music-download.merryblue.llc/api/v1/music/track?track_id=${track_id}`)).json()
 
-    const url = data?.result?.album?.href
-    const fileName = data?.result?.album?.name
+    console.log("🚀 ~ file: index.js:42 ~ app.get ~ data:", data)
+    const url = data?.results?.external_urls?.spotify
+    console.log("🚀 ~ file: index.js:44 ~ app.get ~ url:", url)
+    const fileName = data?.results?.name
 
-    exec(`spotdl ${url}`, async (error, stdout, stderr) => {
+    exec(`./download.sh ${url}`, async (error, stdout, stderr) => {
       if (error) {
         console.log(`error: ${error.message}`)
         return res.status(500).json({ message: error.message })
@@ -55,7 +57,7 @@ app.get('/api/v1/spotify_song', async (req, res) => {
 
       const uuidName = await getFileName(__dirname, fileName)
 
-      return res.status(200).json({ url: `${process.env.DOMAIN}/api/v1/spotify_song/download?id=${uuidName}` })
+      return res.status(200).json({ url: `http://localhost:3000/api/v1/spotify_song/download?id=${uuidName}` })
     })
   } catch (error) {
     return res.status(500).json({ message: error })
