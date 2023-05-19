@@ -5,14 +5,11 @@ const fetch = require('node-fetch')
 const crypto = require('crypto')
 const app = express()
 const PORT = process.env.PORT || 3000
-const HOST = process.env.HOST
-// const searchMusics = require('node-youtube-music')
+const HOST = process.env.HOST || 'localhost'
 
 const { exec } = require('child_process')
 
 app.use(express.json())
-
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 function checkFileName(fileName, string) {
   if (fileName.includes(string) && fileName.includes('.mp3'))
@@ -20,34 +17,30 @@ function checkFileName(fileName, string) {
   else return false
 }
 
-async function getFileName(fileName, name) {
+async function getFileName(filePath, name) {
   try {
-    const result = fs.readdirSync(fileName)
-    console.log(result)
+    const result = fs.readdirSync(filePath)
+    console.log("🚀 ~ file: index.js:26 ~ getFileName ~ result:", result)
+
     for (let i = 0; i < result.length; ++i)
       if (checkFileName(result[i], name)) {
         const name = `${crypto.randomUUID()}.mp3`
         console.log(name)
-        fs.renameSync(`${__dirname}/${result[i]}`, `${__dirname}/${name}`)
+        fs.renameSync(`${filePath}/${result[i]}`, `${filePath}/${name}`)
         return name
       }
-
   } catch (error) {
     console.log(error)
   }
 }
 
-app.get('/api/v1/spotify_song/download', async (req, res) => {
+app.get('/api/v1/spotify_song', async (req, res) => {
   try {
     const { track_id } = req.query
-
     const data = await (await fetch(`https://music-download.merryblue.llc/api/v1/music/track?track_id=${track_id}`)).json()
 
     const url = data?.result?.album?.href
     const fileName = data?.result?.album?.name
-    // const artistsName = data?.artists[0]?.name
-    // const fileName = `${artistsName} - ${albumName}.mp3`
-    // const filePath = `${__dirname}/${fileName}`
 
     exec(`spotdl ${url}`, async (error, stdout, stderr) => {
       if (error) {
@@ -59,23 +52,32 @@ app.get('/api/v1/spotify_song/download', async (req, res) => {
         return res.status(500).json({ message: stderr.message })
       }
       console.log(`stdout: ${stdout}`)
-      await delay(1000)
 
-      const searchFileName = await getFileName(__dirname, fileName)
+      const uuidName = await getFileName(__dirname, fileName)
 
-      return res.status(200).download(`${__dirname}/${searchFileName}`, searchFileName, (err) => {
-        if (err) {
+      return res.status(200).json({ url: `${process.env.DOMAIN}/api/v1/spotify_song/download?id=${uuidName}` })
+    })
+  } catch (error) {
+    return res.status(500).json({ message: error })
+  }
+})
+
+app.get('/api/v1/spotify_song/download', (req, res) => {
+  try {
+    const { id } = req.query
+
+    res.status(200).download(`${__dirname}/${id}`, id, (err) => {
+      if (err) {
+        console.log(err)
+        res.status(500).json({ message: err.message })
+      }
+      fs.unlink(`${__dirname}/${id}`, (error) => {
+        if (error) {
           console.log(err)
-          return res.status(500).json({ message: err.message })
+          res.status(500).json({ message: err.message })
         }
-        fs.unlinkSync(`${__dirname}/${searchFileName}`)
       })
-      // const newFileName = fileName.split(' ').join('_')
-      // const newPath = `${__dirname}/${newFileName}`
-      // fs.renameSync(filePath, newPath)
-
-      // return res.status(200).download(path.normalize(filePath))
-
+      // fs.unlinkSync(`${__dirname}/${id}`)
     })
 
   } catch (error) {
