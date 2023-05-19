@@ -26,7 +26,7 @@ async function getFileName(filePath, name) {
       if (checkFileName(result[i], name)) {
         const name = `${crypto.randomUUID()}.mp3`
         console.log("🚀 ~ file: index.js:28 ~ getFileName ~ name:", name)
-        // fs.renameSync(`${filePath}/${result[i]}`, `${filePath}/${name}`)
+        fs.renameSync(`${filePath}/${result[i]}`, `${filePath}/${name}`)
         return name
       }
   } catch (error) {
