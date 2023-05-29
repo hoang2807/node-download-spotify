@@ -1,3 +1,3 @@
 #!/bin/bash
 
-spotdl $1
+spotifydl $1
