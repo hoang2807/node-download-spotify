@@ -10,7 +10,7 @@ const HOST = process.env.HOST || 'localhost'
 
 app.use(express.json())
 
-app.get('/api/v1/spotify_song', async (req, res) => {
+app.get('/api/v1/spotify_song/download', async (req, res) => {
   try {
     const { track_id } = req.query
     const data = await (await fetch(`https://music-download.merryblue.llc/api/v1/music/track?track_id=${track_id}`)).json()
