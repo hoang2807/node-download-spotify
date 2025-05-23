@@ -71,7 +71,7 @@ const queue = async.queue(async (task, callback) => {
       if (!res.headersSent) {
         res.status(500).json({ error: 'Stream error' });
       }
-      callback(error);
+      // callback(error);
     });
 
     stream.on('end', () => {
